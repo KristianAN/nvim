@@ -10,8 +10,10 @@ end
 require('packer').startup(function(use)
   -- Package manager
   use 'wbthomason/packer.nvim'
-  
+
   use({'scalameta/nvim-metals', requires = { "nvim-lua/plenary.nvim" }})
+
+  use 'github/copilot.vim'
 
   use { -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
@@ -448,6 +450,8 @@ metals_config.settings = {
   excludedPackages = { "akka.actor.typed.javadsl", "com.github.swagger.akka.javadsl" },
 }
 
+metals_config.on_attach = on_attach
+
 -- *READ THIS*
 -- I *highly* recommend setting statusBarProvider to true, however if you do,
 -- you *have* to have a setting to display this in your statusline or else
@@ -460,6 +464,7 @@ metals_config.capabilities = require("cmp_nvim_lsp").default_capabilities()
 
 -- Autocmd that will actually be in charging of starting the whole thing
 local nvim_metals_group = vim.api.nvim_create_augroup("nvim-metals", { clear = true })
+
 vim.api.nvim_create_autocmd("FileType", {
   -- NOTE: You may or may not want java included here. You will need it if you
   -- want basic Java support but it may also conflict if you are using
@@ -471,5 +476,6 @@ vim.api.nvim_create_autocmd("FileType", {
   group = nvim_metals_group,
 })
 
+vim.api.nvim_set_option("clipboard","unnamed")
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et
