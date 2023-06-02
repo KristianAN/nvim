@@ -11,9 +11,10 @@ require('packer').startup(function(use)
   -- Package manager
   use 'wbthomason/packer.nvim'
 
-  use({'scalameta/nvim-metals', requires = { "nvim-lua/plenary.nvim" }})
-
-  use 'github/copilot.vim'
+  use {
+    "windwp/nvim-autopairs",
+    config = function() require("nvim-autopairs").setup {} end
+  }
 
   use { -- LSP Configuration & Plugins
     'neovim/nvim-lspconfig',
@@ -30,10 +31,26 @@ require('packer').startup(function(use)
     },
   }
 
+  use { 'nvim-orgmode/orgmode', config = function()
+    require('orgmode').setup {}
+  end
+  }
+
   use { -- Autocompletion
     'hrsh7th/nvim-cmp',
-    requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip' },
+    requires = { 'hrsh7th/cmp-nvim-lsp', 'L3MON4D3/LuaSnip', 'saadparwaiz1/cmp_luasnip', 'hrsh7th/cmp-vsnip',
+      'hrsh7th/vim-vsnip'
+    }
   }
+  use { "mfussenegger/nvim-dap" }
+
+  use({
+    "scalameta/nvim-metals",
+    requires = {
+      "nvim-lua/plenary.nvim",
+      "mfussenegger/nvim-dap",
+    },
+  })
 
   use { -- Highlight, edit, and navigate code
     'nvim-treesitter/nvim-treesitter',
@@ -51,8 +68,8 @@ require('packer').startup(function(use)
   use 'tpope/vim-fugitive'
   use 'tpope/vim-rhubarb'
   use 'lewis6991/gitsigns.nvim'
-  use 'mfussenegger/nvim-jdtls'
 
+  -- Java
   use 'navarasu/onedark.nvim' -- Theme inspired by Atom
   use 'nvim-lualine/lualine.nvim' -- Fancier statusline
   use 'lukas-reineke/indent-blankline.nvim' -- Add indentation guides even on blank lines
@@ -64,6 +81,15 @@ require('packer').startup(function(use)
 
   -- Fuzzy Finder Algorithm which requires local dependencies to be built. Only load if `make` is available
   use { 'nvim-telescope/telescope-fzf-native.nvim', run = 'make', cond = vim.fn.executable 'make' == 1 }
+
+  -- Better lsp error lines
+
+  use({
+    "https://git.sr.ht/~whynothugo/lsp_lines.nvim",
+    config = function()
+      require("lsp_lines").setup()
+    end,
+  })
 
   -- Add custom plugins to packer from ~/.config/nvim/lua/custom/plugins.lua
   local has_plugins, plugins = pcall(require, 'custom.plugins')
@@ -172,9 +198,13 @@ require('Comment').setup()
 
 -- Enable `lukas-reineke/indent-blankline.nvim`
 -- See `:help indent_blankline.txt`
-require('indent_blankline').setup {
-  char = '┊',
-  show_trailing_blankline_indent = false,
+vim.opt.list = true
+vim.opt.listchars:append "eol:↴"
+
+require("indent_blankline").setup {
+  space_char_blankline = " ",
+  show_current_context = true,
+  show_current_context_start = true,
 }
 
 -- Gitsigns
@@ -197,6 +227,8 @@ require('telescope').setup {
       i = {
         ['<C-u>'] = false,
         ['<C-d>'] = false,
+        ["<C-j>"] = require('telescope.actions').move_selection_next,
+        ["<C-k>"] = require('telescope.actions').move_selection_previous,
       },
     },
   },
@@ -204,10 +236,9 @@ require('telescope').setup {
 
 -- Enable telescope fzf native, if installed
 pcall(require('telescope').load_extension, 'fzf')
-
 -- See `:help telescope.builtin`
 vim.keymap.set('n', '<leader>?', require('telescope.builtin').oldfiles, { desc = '[?] Find recently opened files' })
-vim.keymap.set('n', '<leader><space>', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
+vim.keymap.set('n', '<leader>fb', require('telescope.builtin').buffers, { desc = '[ ] Find existing buffers' })
 vim.keymap.set('n', '<leader>/', function()
   -- You can pass additional configuration to telescope to change theme, layout, etc.
   require('telescope.builtin').current_buffer_fuzzy_find(require('telescope.themes').get_dropdown {
@@ -216,17 +247,18 @@ vim.keymap.set('n', '<leader>/', function()
   })
 end, { desc = '[/] Fuzzily search in current buffer]' })
 
-vim.keymap.set('n', '<leader>sf', require('telescope.builtin').find_files, { desc = '[S]earch [F]iles' })
-vim.keymap.set('n', '<leader>sh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
-vim.keymap.set('n', '<leader>sw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
-vim.keymap.set('n', '<leader>sg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
-vim.keymap.set('n', '<leader>sd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
-
+vim.keymap.set('n', '<leader><space>', require('telescope.builtin').find_files, { desc = '[S]earch [F]iles' })
+vim.keymap.set('n', '<leader>fh', require('telescope.builtin').help_tags, { desc = '[S]earch [H]elp' })
+vim.keymap.set('n', '<leader>fw', require('telescope.builtin').grep_string, { desc = '[S]earch current [W]ord' })
+vim.keymap.set('n', '<leader>fg', require('telescope.builtin').live_grep, { desc = '[S]earch by [G]rep' })
+vim.keymap.set('n', '<leader>fd', require('telescope.builtin').diagnostics, { desc = '[S]earch [D]iagnostics' })
+-- Go up and down inside telescope search  results with <C-j> and <C-k>
+--
 -- [[ Configure Treesitter ]]
 -- See `:help nvim-treesitter`
 require('nvim-treesitter.configs').setup {
   -- Add languages to be installed here that you want installed for treesitter
-  ensure_installed = { 'c', 'cpp','java', 'go', 'lua', 'python', 'rust', 'typescript', 'help', 'vim' },
+  ensure_installed = { 'c', 'cpp', 'java', 'go', 'lua', 'python', 'rust', 'typescript', 'help', 'vim', 'scala' },
 
   highlight = { enable = true },
   indent = { enable = true, disable = { 'python' } },
@@ -306,7 +338,11 @@ local on_attach = function(_, bufnr)
     end
 
     vim.keymap.set('n', keys, func, { buffer = bufnr, desc = desc })
+    vim.keymap.set('n', '<space>f', function()
+      vim.lsp.buf.format { async = true }
+    end)
   end
+  vim.cmd [[autocmd BufWritePre <buffer> lua vim.lsp.buf.format()]]
 
   nmap('<leader>rn', vim.lsp.buf.rename, '[R]e[n]ame')
   nmap('<leader>ca', vim.lsp.buf.code_action, '[C]ode [A]ction')
@@ -344,11 +380,13 @@ end
 local servers = {
   -- clangd = {},
   -- gopls = {},
-  -- pyright = {},
-  -- rust_analyzer = {},
-  -- tsserver = {},
+  pyright = {},
+  rust_analyzer = {},
+  svelte = {},
+  tsserver = {},
+  -- kotlin_language_server = {},
 
-  sumneko_lua = {
+  lua_ls = {
     Lua = {
       workspace = { checkThirdParty = false },
       telemetry = { enable = false },
@@ -358,7 +396,6 @@ local servers = {
 
 -- Setup neovim lua configuration
 require('neodev').setup()
---
 -- nvim-cmp supports additional completion capabilities, so broadcast that to servers
 local capabilities = vim.lsp.protocol.make_client_capabilities()
 capabilities = require('cmp_nvim_lsp').default_capabilities(capabilities)
@@ -387,60 +424,48 @@ mason_lspconfig.setup_handlers {
 require('fidget').setup()
 
 -- nvim-cmp setup
-local cmp = require 'cmp'
-local luasnip = require 'luasnip'
-
-cmp.setup {
-  snippet = {
-    expand = function(args)
-      luasnip.lsp_expand(args.body)
-    end,
-  },
-  mapping = cmp.mapping.preset.insert {
-    ['<C-d>'] = cmp.mapping.scroll_docs(-4),
-    ['<C-f>'] = cmp.mapping.scroll_docs(4),
-    ['<C-Space>'] = cmp.mapping.complete(),
-    ['<CR>'] = cmp.mapping.confirm {
-      behavior = cmp.ConfirmBehavior.Replace,
-      select = true,
-    },
-    ['<Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_next_item()
-      elseif luasnip.expand_or_jumpable() then
-        luasnip.expand_or_jump()
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-    ['<S-Tab>'] = cmp.mapping(function(fallback)
-      if cmp.visible() then
-        cmp.select_prev_item()
-      elseif luasnip.jumpable(-1) then
-        luasnip.jump(-1)
-      else
-        fallback()
-      end
-    end, { 'i', 's' }),
-  },
+-- completion related settings
+-- This is similiar to what I use
+local cmp = require("cmp")
+cmp.setup({
   sources = {
-    { name = 'nvim_lsp' },
+    { name = "nvim_lsp" },
+    { name = "vsnip" },
     { name = 'luasnip' },
   },
-}
-
-local java_config = {
-    root_dir = vim.fs.dirname(vim.fs.find({'.gradlew', '.git', 'mvnw'}, { upward = true })[1]),
-    cmd = {'/home/kristian/.local/share/jdtls/bin/jdtls'},
-}
-
-vim.api.nvim_create_autocmd("FileType", {
-    pattern = { "java" },
-    callback = function()
-      require("jdtls").start_or_attach(java_config)
-    end
+  snippet = {
+    expand = function(args)
+      -- Comes from vsnip
+      vim.fn["vsnip#anonymous"](args.body)
+    end,
+  },
+  mapping = cmp.mapping.preset.insert({
+    -- None of this made sense to me when first looking into this since there
+    -- is no vim docs, but you can't have select = true here _unless_ you are
+    -- also using the snippet stuff. So keep in mind that if you remove
+    -- snippets you need to remove this select
+    ["<CR>"] = cmp.mapping.confirm({ select = true }),
+    -- I use tabs... some say you should stick to ins-completion but this is just here as an example
+    ["<Tab>"] = function(fallback)
+      if cmp.visible() then
+        cmp.select_next_item()
+      else
+        fallback()
+      end
+    end,
+    ["<S-Tab>"] = function(fallback)
+      if cmp.visible() then
+        cmp.select_prev_item()
+      else
+        fallback()
+      end
+    end,
+  }),
 })
 
+----------------------------------
+-- LSP Setup ---------------------
+----------------------------------
 
 local metals_config = require("metals").bare_config()
 
@@ -476,6 +501,42 @@ vim.api.nvim_create_autocmd("FileType", {
   group = nvim_metals_group,
 })
 
-vim.api.nvim_set_option("clipboard","unnamed")
--- The line beneath this is called `modeline`. See `:help modeline`
--- vim: ts=2 sts=2 sw=2 et
+
+
+vim.api.nvim_set_option("clipboard", "unnamed")
+--
+
+-- Org mode
+require('orgmode').setup_ts_grammar()
+
+-- Treesitter configuration
+require('nvim-treesitter.configs').setup {
+  -- If TS highlights are not enabled at all, or disabled via `disable` prop,
+  -- highlighting will fallback to default Vim syntax highlighting
+  highlight = {
+    enable = true,
+    -- Required for spellcheck, some LaTex highlights and
+    -- code block highlights that do not have ts grammar
+    additional_vim_regex_highlighting = { 'org' },
+  },
+  ensure_installed = { 'org' }, -- Or run :TSUpdate org
+}
+
+require('orgmode').setup({
+  org_agenda_files = { '~/Dropbox/org/*', '~/my-orgs/**/*' },
+  org_default_notes_file = '~/Dropbox/org/refile.org',
+})
+
+-- better lsp errors config
+require("lsp_lines").setup()
+
+-- autopair
+require("nvim-autopairs").setup()
+
+-- Disable virtual_text since it's redundant due to lsp_lines.
+vim.diagnostic.config({
+  virtual_text = false,
+})
+
+-- My remaps
+vim.api.nvim_set_keymap('n', '<Space>`', '<Cmd>b#<CR>', { noremap = true, silent = true })
